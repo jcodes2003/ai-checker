@@ -43,6 +43,7 @@ export default function TeacherPage() {
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(
     null
   );
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [teacherPassword, setTeacherPassword] = useState("");
   const [isTeacherUnlocked, setIsTeacherUnlocked] = useState(false);
   const [passwordError, setPasswordError] = useState("");
@@ -227,8 +228,8 @@ export default function TeacherPage() {
             </div>
           </div>
         ) : (
-          <div className="grid gap-6 lg:grid-cols-[1fr_0.95fr] lg:items-start">
-            <div className="rounded-[2rem] border border-slate-700/60 bg-slate-950/95 p-6 text-slate-50 shadow-[0_30px_120px_rgba(0,0,0,0.24)] sm:p-8">
+          <div className="flex flex-col gap-6">
+            <div className="w-full rounded-[2rem] border border-slate-700/60 bg-slate-950/95 p-6 text-slate-50 shadow-[0_30px_120px_rgba(0,0,0,0.24)] sm:p-8">
             <div className="inline-flex items-center rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-amber-100">
               Teacher prompt builder
             </div>
@@ -285,8 +286,8 @@ export default function TeacherPage() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-slate-700/60 bg-slate-950/95 p-6 text-slate-50 shadow-[0_30px_120px_rgba(0,0,0,0.24)] sm:p-8">
-            <div className="flex items-center justify-between gap-4">
+          <div className="w-full min-h-[32rem] rounded-[2rem] border border-slate-700/60 bg-slate-950/95 p-6 text-slate-50 shadow-[0_30px_120px_rgba(0,0,0,0.24)] sm:p-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-2xl font-semibold text-slate-950">
                   Student submissions
@@ -327,14 +328,14 @@ export default function TeacherPage() {
               </div>
             </div>
 
-            <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-slate-200">
+            <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-slate-700/70 bg-slate-950/60">
               {submissionError ? (
                 <div className="border-b border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                   {submissionError}
                 </div>
               ) : null}
 
-              <div className="grid grid-cols-12 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <div className="grid grid-cols-12 bg-slate-900/80 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200 sm:text-xs">
                 <div className="col-span-2">Student ID</div>
                 <div className="col-span-2">Section</div>
                 <div className="col-span-3">Student name</div>
@@ -344,25 +345,25 @@ export default function TeacherPage() {
               </div>
 
               {loadingSubmissions ? (
-                <div className="px-4 py-6 text-sm text-slate-600">
+                <div className="px-4 py-6 text-sm text-slate-300">
                   Loading submissions...
                 </div>
               ) : filteredSubmissions.length ? (
-                <div className="divide-y divide-slate-200">
+                <div className="divide-y divide-slate-700/80">
                   {filteredSubmissions.map((submission) => (
                     <div
                       key={submission.id}
-                      className={`grid grid-cols-12 gap-3 px-4 py-4 text-sm text-slate-700 transition ${
+                      className={`grid grid-cols-12 gap-3 px-4 py-4 text-sm text-slate-100 transition ${
                         submission.id === selectedSubmissionId
-                          ? "bg-amber-50/60"
-                          : "hover:bg-slate-50"
+                          ? "bg-amber-300/15"
+                          : "hover:bg-slate-800/80"
                       }`}
                     >
-                      <div className="col-span-2 font-medium text-slate-700">
+                      <div className="col-span-2 flex items-center font-medium text-slate-100">
                         {submission.student_id_number}
                       </div>
 
-                      <div className="col-span-2 text-slate-700">
+                      <div className="col-span-2 flex items-center text-slate-200">
                         {submission.student_section ?? "No section"}
                       </div>
 
@@ -373,50 +374,52 @@ export default function TeacherPage() {
                             currentId === submission.id ? null : submission.id
                           )
                         }
-                        className="col-span-3 text-left font-semibold text-slate-950 transition hover:text-amber-700"
+                        className="col-span-3 flex items-center text-left font-semibold text-slate-50 transition hover:text-amber-200"
                       >
-                        {submission.student_name}
-                        <span className="mt-1 block text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                          {submission.id === selectedSubmissionId
-                            ? "Click to hide AI response"
-                            : "Click to view AI response"}
+                        <span>
+                          {submission.student_name}
+                          <span className="mt-1 block text-[10px] font-medium uppercase tracking-[0.18em] text-slate-300 sm:text-xs">
+                            {submission.id === selectedSubmissionId
+                              ? "Click to hide AI response"
+                              : "Click to view AI response"}
+                          </span>
                         </span>
                       </button>
 
-                      <div className="col-span-2">
-                        <div className="inline-flex rounded-2xl bg-emerald-50 px-4 py-2 text-right">
+                      <div className="col-span-2 flex items-center">
+                        <div className="inline-flex rounded-2xl bg-emerald-400/15 px-3 py-2 text-right ring-1 ring-emerald-300/30 sm:px-4">
                           <div>
-                            <div className="text-2xl font-semibold text-emerald-700">
+                            <div className="text-xl font-semibold text-emerald-300 sm:text-2xl">
                               {submission.score ?? "N/A"}
                             </div>
-                            <div className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-600">
+                            <div className="text-[10px] font-medium uppercase tracking-[0.2em] text-emerald-200 sm:text-xs">
                               {submission.band ?? "No band"}
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="col-span-1 text-sm text-slate-600">
+                      <div className="col-span-1 flex items-center text-sm text-slate-200">
                         {submission.evaluation.isRelatedToQuestion === false
                           ? "Off topic"
                           : "On topic"}
                       </div>
 
-                      <div className="col-span-2 text-sm text-slate-600">
+                      <div className="col-span-2 flex items-center justify-end text-sm text-slate-300">
                         {new Date(submission.created_at).toLocaleDateString()}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="px-4 py-6 text-sm text-slate-600">
+                <div className="px-4 py-6 text-sm text-slate-300">
                   No submissions match this section filter.
                 </div>
               )}
             </div>
 
             {selectedSubmissionId ? (
-              <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+              <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -433,7 +436,7 @@ export default function TeacherPage() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-right">
                       <div className="text-3xl font-semibold text-emerald-700">
                         {(selectedRecord ?? selectedSubmission)?.score ?? "N/A"}
@@ -442,6 +445,14 @@ export default function TeacherPage() {
                         {(selectedRecord ?? selectedSubmission)?.band ?? "No band"}
                       </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsDetailModalOpen(true)}
+                      className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      Open full view
+                    </button>
 
                     <button
                       type="button"
@@ -476,49 +487,51 @@ export default function TeacherPage() {
                   </div>
                 </div>
 
-                <div className="mt-6 rounded-2xl bg-white p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    Student answer
+                <div className="mt-6 grid gap-5 xl:grid-cols-2">
+                  <div className="rounded-2xl bg-white p-4">
+                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      Student answer
+                    </div>
+                    <p className="mt-2 max-h-[28rem] overflow-y-auto whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                      {(selectedRecord ?? selectedSubmission)?.student_answer}
+                    </p>
                   </div>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                    {(selectedRecord ?? selectedSubmission)?.student_answer}
-                  </p>
-                </div>
 
-                <div className="mt-6 rounded-2xl bg-white p-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    AI response
-                  </div>
-                  <div className="mt-2 space-y-3 text-sm leading-7 text-slate-700">
-                    <p className="font-semibold text-slate-950">
-                      {(selectedRecord ?? selectedSubmission)?.evaluation.summary ?? "No summary available."}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-slate-950">
-                        Teacher feedback:
-                      </span>{" "}
-                      {(selectedRecord ?? selectedSubmission)?.evaluation.teacherFeedback ?? "Not available."}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-slate-950">
-                        Student feedback:
-                      </span>{" "}
-                      {(selectedRecord ?? selectedSubmission)?.evaluation.studentFeedback ?? "Not available."}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-slate-950">
-                        Related:
-                      </span>{" "}
-                      {(selectedRecord ?? selectedSubmission)?.evaluation.isRelatedToQuestion === false
-                        ? "Off topic"
-                        : "On topic"}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-slate-950">
-                        Note:
-                      </span>{" "}
-                      {(selectedRecord ?? selectedSubmission)?.evaluation.relevanceNote ?? "No relevance note."}
-                    </p>
+                  <div className="rounded-2xl bg-white p-4">
+                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                      AI response
+                    </div>
+                    <div className="mt-2 max-h-[28rem] space-y-3 overflow-y-auto text-sm leading-7 text-slate-700">
+                      <p className="font-semibold text-slate-950">
+                        {(selectedRecord ?? selectedSubmission)?.evaluation.summary ?? "No summary available."}
+                      </p>
+                      <p>
+                        <span className="font-semibold text-slate-950">
+                          Teacher feedback:
+                        </span>{" "}
+                        {(selectedRecord ?? selectedSubmission)?.evaluation.teacherFeedback ?? "Not available."}
+                      </p>
+                      <p>
+                        <span className="font-semibold text-slate-950">
+                          Student feedback:
+                        </span>{" "}
+                        {(selectedRecord ?? selectedSubmission)?.evaluation.studentFeedback ?? "Not available."}
+                      </p>
+                      <p>
+                        <span className="font-semibold text-slate-950">
+                          Related:
+                        </span>{" "}
+                        {(selectedRecord ?? selectedSubmission)?.evaluation.isRelatedToQuestion === false
+                          ? "Off topic"
+                          : "On topic"}
+                      </p>
+                      <p>
+                        <span className="font-semibold text-slate-950">
+                          Note:
+                        </span>{" "}
+                        {(selectedRecord ?? selectedSubmission)?.evaluation.relevanceNote ?? "No relevance note."}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -527,6 +540,71 @@ export default function TeacherPage() {
                 Select a student name above to reveal the submitted reflection and AI feedback.
               </div>
             )}
+
+            {isDetailModalOpen && selectedSubmissionId ? (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+                <div className="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_30px_100px_rgba(15,23,42,0.35)]">
+                  <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Full submission view
+                      </div>
+                      <h3 className="mt-1 text-xl font-semibold text-slate-950">
+                        {(selectedRecord ?? selectedSubmission)?.student_name}
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsDetailModalOpen(false)}
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-medium text-slate-700 transition hover:bg-slate-100"
+                      aria-label="Close full view"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="grid max-h-[calc(90vh-80px)] gap-5 overflow-y-auto p-5 lg:grid-cols-2">
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Student answer
+                      </div>
+                      <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">
+                        {(selectedRecord ?? selectedSubmission)?.student_answer}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-slate-50 p-4">
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        AI evaluation
+                      </div>
+                      <div className="mt-3 space-y-3 text-sm leading-7 text-slate-700">
+                        <p className="font-semibold text-slate-950">
+                          {(selectedRecord ?? selectedSubmission)?.evaluation.summary ?? "No summary available."}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-slate-950">Teacher feedback:</span>{" "}
+                          {(selectedRecord ?? selectedSubmission)?.evaluation.teacherFeedback ?? "Not available."}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-slate-950">Student feedback:</span>{" "}
+                          {(selectedRecord ?? selectedSubmission)?.evaluation.studentFeedback ?? "Not available."}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-slate-950">Related:</span>{" "}
+                          {(selectedRecord ?? selectedSubmission)?.evaluation.isRelatedToQuestion === false
+                            ? "Off topic"
+                            : "On topic"}
+                        </p>
+                        <p>
+                          <span className="font-semibold text-slate-950">Note:</span>{" "}
+                          {(selectedRecord ?? selectedSubmission)?.evaluation.relevanceNote ?? "No relevance note."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
         )}

@@ -90,13 +90,15 @@ export default function StudentPage() {
   }, []);
 
   const hasPrompt = Boolean(question.trim());
-  const MIN_CHARS = 50;
+  const MIN_WORDS = 150;
+  const wordCount = (value: string) =>
+    value.trim().split(/\s+/).filter(Boolean).length;
   const canSubmit =
     hasPrompt &&
     studentName.trim().length > 0 &&
     studentIdNumber.trim().length > 0 &&
     studentSection.trim().length > 0 &&
-    studentAnswer.trim().length >= MIN_CHARS;
+    wordCount(studentAnswer) >= MIN_WORDS;
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,8 +116,9 @@ export default function StudentPage() {
       return;
     }
 
-    if (studentAnswer.trim().length < MIN_CHARS) {
-      setError(`Please write at least ${MIN_CHARS} characters in your reflection.`);
+    const answerWordCount = wordCount(studentAnswer);
+    if (answerWordCount < MIN_WORDS) {
+      setError(`Please write at least ${MIN_WORDS} words in your reflection.`);
       return;
     }
 
@@ -285,7 +288,7 @@ export default function StudentPage() {
                   onDrop={(event) => event.preventDefault()}
                   rows={6}
                   className="mt-2 w-full rounded-[1.5rem] border border-slate-300 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-900 outline-none transition focus:border-amber-300/60 focus:ring-4 focus:ring-amber-100"
-                  placeholder="Type your reflection here. Minimum 50 characters."
+                  placeholder="Type your reflection here. Minimum 150 words."
                 />
               </label>
             </div>

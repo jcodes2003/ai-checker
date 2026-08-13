@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     `Student answer:\n${row.student_answer}`,
   ].join("\n\n");
 
-  const response = await fetch("https://openrouter.ai/api/v1/responses", {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -74,15 +74,43 @@ export async function POST(request: Request) {
     },
     body: JSON.stringify({
       model: MODEL,
-      input: `${instruction}\n\n${prompt}`,
-      text: {
-        format: {
-          type: "json_schema",
+      messages: [{ role: "user", content: `${instruction}\n\n${prompt}` }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
           name: "reflection_grading_result",
           strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              score: { type: "number", minimum: 1, maximum: 10 },
+              band: { type: "string", enum: ["Excellent", "Strong", "Developing", "Needs work"] },
+              summary: { type: "string" },
+              strengths: { type: "array", items: { type: "string" }, minItems: 2 },
+              missingPoints: { type: "array", items: { type: "string" }, minItems: 2 },
+              teacherFeedback: { type: "string" },
+              studentFeedback: { type: "string" },
+              nextStep: { type: "string" },
+              isRelatedToQuestion: { type: "boolean" },
+              relevanceNote: { type: "string" },
+            },
+            required: [
+              "score",
+              "band",
+              "summary",
+              "strengths",
+              "missingPoints",
+              "teacherFeedback",
+              "studentFeedback",
+              "nextStep",
+              "isRelatedToQuestion",
+              "relevanceNote",
+            ],
+          },
         },
       },
-      max_output_tokens: 1200,
+      max_tokens: 1200,
     }),
   });
 
@@ -92,7 +120,7 @@ export async function POST(request: Request) {
   }
 
   const data = (await response.json()) as any;
-  const rawText = data.output_text ?? data.output?.flatMap((item: any) => item.content ?? []).find((c: any) => c.text)?.text ?? "";
+  const rawText = data.choices?.[0]?.message?.content ?? "";
 
   function extractJsonObject(text: string) {
     const trimmed = text.trim();

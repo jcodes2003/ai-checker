@@ -114,6 +114,16 @@ export async function POST(request: Request) {
     );
   }
 
+  const answerWordCount = studentAnswer.trim().split(/\s+/).filter(Boolean).length;
+  if (answerWordCount < 150) {
+    return Response.json(
+      {
+        error: "Please write at least 150 words in your reflection.",
+      },
+      { status: 400 }
+    );
+  }
+
   const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/$/, "");
   const supabaseKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_ANON_KEY;
@@ -176,7 +186,7 @@ export async function POST(request: Request) {
     `Student answer:\n${studentAnswer}`,
   ].join("\n\n");
 
-  const response = await fetch("https://openrouter.ai/api/v1/responses", {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -185,16 +195,16 @@ export async function POST(request: Request) {
     },
     body: JSON.stringify({
       model: MODEL,
-      input: `${instruction}\n\n${prompt}`,
-      text: {
-        format: {
-          type: "json_schema",
+      messages: [{ role: "user", content: `${instruction}\n\n${prompt}` }],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
           name: "reflection_grading_result",
           strict: true,
           schema: responseSchema,
         },
       },
-      max_output_tokens: 1200,
+      max_tokens: 1200,
     }),
   });
 
@@ -209,19 +219,14 @@ export async function POST(request: Request) {
   }
 
   const data = (await response.json()) as {
-    output_text?: string;
-    output?: Array<{
-      content?: Array<{
-        text?: string;
-      }>;
+    choices?: Array<{
+      message?: {
+        content?: string | null;
+      };
     }>;
   };
 
-  const rawText =
-    data.output_text ??
-    data.output?.flatMap((item) => item.content ?? []).find((item) => item.text)
-      ?.text ??
-    "";
+  const rawText = data.choices?.[0]?.message?.content ?? "";
 
   if (!rawText) {
     return Response.json(
