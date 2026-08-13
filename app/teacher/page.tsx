@@ -427,7 +427,7 @@ export default function TeacherPage() {
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
                 <div className="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_30px_100px_rgba(15,23,42,0.35)]">
                   <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4">
-                    <div>
+                    <div> 
                       <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                         Full submission view
                       </div>
