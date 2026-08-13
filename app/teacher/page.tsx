@@ -43,7 +43,13 @@ export default function TeacherPage() {
   const [selectedSubmissionId, setSelectedSubmissionId] = useState<number | null>(
     null
   );
-  const studentLink = "/student";
+  const [teacherPassword, setTeacherPassword] = useState("");
+  const [isTeacherUnlocked, setIsTeacherUnlocked] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+
+  const encodedQuestion = encodeURIComponent(question);
+  const encodedRubric = encodeURIComponent(rubric);
+  const studentLink = `/student?question=${encodedQuestion}&rubric=${encodedRubric}`;
   const availableSections = Array.from(
     new Set(
       submissions
@@ -125,6 +131,16 @@ export default function TeacherPage() {
     };
   }, []);
 
+  function unlockTeacher() {
+    if (teacherPassword === "0987654321") {
+      setIsTeacherUnlocked(true);
+      setPasswordError("");
+      return;
+    }
+
+    setPasswordError("Incorrect password. Please try again.");
+  }
+
   async function publishPrompt() {
     setPublishing(true);
     setPublishStatus("");
@@ -174,8 +190,45 @@ export default function TeacherPage() {
           </span>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_0.95fr] lg:items-start">
-          <div className="rounded-[2rem] border border-slate-700/60 bg-slate-950/95 p-6 text-slate-50 shadow-[0_30px_120px_rgba(0,0,0,0.24)] sm:p-8">
+        {!isTeacherUnlocked ? (
+          <div className="rounded-[2rem] border border-slate-200/70 bg-white/95 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.16)]">
+            <h1 className="text-3xl font-semibold text-slate-950">
+              Teacher access required
+            </h1>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              Enter the teacher password to unlock the dashboard.
+            </p>
+
+            <div className="mt-6 space-y-4">
+              <label className="block text-sm font-medium text-slate-700">
+                Password
+                <input
+                  type="password"
+                  value={teacherPassword}
+                  onChange={(event) => setTeacherPassword(event.target.value)}
+                  className="mt-2 w-full rounded-[1.5rem] border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-300/60 focus:ring-4 focus:ring-amber-100"
+                  placeholder="Enter teacher password"
+                />
+              </label>
+
+              {passwordError ? (
+                <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {passwordError}
+                </div>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={unlockTeacher}
+                className="inline-flex h-12 items-center justify-center rounded-full bg-amber-300 px-5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
+              >
+                Unlock teacher dashboard
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-[1fr_0.95fr] lg:items-start">
+            <div className="rounded-[2rem] border border-slate-700/60 bg-slate-950/95 p-6 text-slate-50 shadow-[0_30px_120px_rgba(0,0,0,0.24)] sm:p-8">
             <div className="inline-flex items-center rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-amber-100">
               Teacher prompt builder
             </div>
@@ -232,46 +285,7 @@ export default function TeacherPage() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.16)]">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-2xl font-semibold text-slate-950">
-                  Share with students
-                </h2>
-                <p className="mt-3 text-sm leading-7 text-slate-600">
-                  Copy or open the link below to share the reflection prompt directly.
-                </p>
-              </div>
-              <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-                Ready to share
-              </span>
-            </div>
-
-            <div className="mt-6 rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
-              <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Student link preview
-              </div>
-              <div className="mt-3 break-all text-sm leading-7 text-slate-900">
-                {studentLink}
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-3">
-              <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-700">
-                Publish the prompt first. Then students can open{" "}
-                <span className="font-semibold">{studentLink}</span> and the
-                latest prompt will load automatically from the database.
-              </div>
-            </div>
-
-            {publishStatus ? (
-              <div className="mt-6 rounded-2xl bg-emerald-50 p-4 text-sm leading-7 text-emerald-900">
-                {publishStatus}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="rounded-[2rem] border border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.16)] lg:col-span-2">
+          <div className="rounded-[2rem] border border-slate-700/60 bg-slate-950/95 p-6 text-slate-50 shadow-[0_30px_120px_rgba(0,0,0,0.24)] sm:p-8">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-semibold text-slate-950">
@@ -515,7 +529,12 @@ export default function TeacherPage() {
             )}
           </div>
         </div>
+        )}
       </section>
     </main>
   );
 }
+//       </section>
+//     </main>
+//   );
+// }

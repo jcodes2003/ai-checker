@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, ClipboardEvent, MouseEvent, useEffect, useState } from "react";
 
 type ApiResponse = {
   submitted: boolean;
@@ -39,6 +39,18 @@ export default function StudentPage() {
   const [submitted, setSubmitted] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
 
+  function preventClipboardAction(
+    event: ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) {
+    event.preventDefault();
+  }
+
+  function preventContextMenu(
+    event: MouseEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) {
+    event.preventDefault();
+  }
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -47,6 +59,7 @@ export default function StudentPage() {
     const params = new URLSearchParams(window.location.search);
     const queryQuestion = params.get("question")?.trim() ?? "";
     const queryRubric = params.get("rubric")?.trim() ?? "";
+    const hasQueryPrompt = Boolean(queryQuestion || queryRubric);
 
     if (queryQuestion) {
       setQuestion(queryQuestion);
@@ -56,10 +69,6 @@ export default function StudentPage() {
       setRubric(queryRubric);
     }
 
-    if (queryQuestion) {
-      return;
-    }
-
     async function loadPrompt() {
       try {
         const response = await fetch("/api/prompts");
@@ -67,8 +76,10 @@ export default function StudentPage() {
 
         if (data.prompt) {
           setPromptId(data.prompt.id);
-          setQuestion(data.prompt.question);
-          setRubric(data.prompt.rubric ?? "");
+          if (!hasQueryPrompt) {
+            setQuestion(data.prompt.question);
+            setRubric(data.prompt.rubric ?? "");
+          }
         }
       } catch {
         // If the prompt fetch fails, the teacher can still use the query-string fallback.
@@ -80,13 +91,35 @@ export default function StudentPage() {
 
   const hasPrompt = Boolean(question.trim());
   const MIN_CHARS = 50;
+  const canSubmit =
+    hasPrompt &&
+    studentName.trim().length > 0 &&
+    studentIdNumber.trim().length > 0 &&
+    studentSection.trim().length > 0 &&
+    studentAnswer.trim().length >= MIN_CHARS;
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
     setError("");
     setSubmitted(false);
     setStatusMessage("");
+
+    if (!studentName.trim() || !studentIdNumber.trim() || !studentSection.trim()) {
+      setError("Please enter your name, ID number, and section before submitting.");
+      return;
+    }
+
+    if (!hasPrompt) {
+      setError("A prompt is required before submitting your reflection.");
+      return;
+    }
+
+    if (studentAnswer.trim().length < MIN_CHARS) {
+      setError(`Please write at least ${MIN_CHARS} characters in your reflection.`);
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const response = await fetch("/api/ai-checker", {
@@ -164,6 +197,11 @@ export default function StudentPage() {
               <textarea
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
+                onPaste={preventClipboardAction}
+                onCopy={preventClipboardAction}
+                onCut={preventClipboardAction}
+                onContextMenu={preventContextMenu}
+                onDrop={(event) => event.preventDefault()}
                 rows={4}
                 className="mt-2 w-full rounded-[1.5rem] border border-slate-300 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-900 outline-none transition focus:border-amber-300/60 focus:ring-4 focus:ring-amber-100"
                 placeholder="Your prompt will appear here once loaded."
@@ -177,6 +215,11 @@ export default function StudentPage() {
               <textarea
                 value={rubric}
                 onChange={(event) => setRubric(event.target.value)}
+                onPaste={preventClipboardAction}
+                onCopy={preventClipboardAction}
+                onCut={preventClipboardAction}
+                onContextMenu={preventContextMenu}
+                onDrop={(event) => event.preventDefault()}
                 rows={4}
                 className="mt-2 w-full rounded-[1.5rem] border border-slate-300 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-900 outline-none transition focus:border-amber-300/60 focus:ring-4 focus:ring-amber-100"
                 placeholder="Optional rubric or expectations."
@@ -189,6 +232,10 @@ export default function StudentPage() {
                 <input
                   value={studentName}
                   onChange={(event) => setStudentName(event.target.value)}
+                  onPaste={preventClipboardAction}
+                  onCopy={preventClipboardAction}
+                  onCut={preventClipboardAction}
+                  onContextMenu={preventContextMenu}
                   className="mt-2 w-full rounded-[1.5rem] border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-300/60 focus:ring-4 focus:ring-amber-100"
                   placeholder="Student name"
                 />
@@ -199,6 +246,10 @@ export default function StudentPage() {
                 <input
                   value={studentIdNumber}
                   onChange={(event) => setStudentIdNumber(event.target.value)}
+                  onPaste={preventClipboardAction}
+                  onCopy={preventClipboardAction}
+                  onCut={preventClipboardAction}
+                  onContextMenu={preventContextMenu}
                   className="mt-2 w-full rounded-[1.5rem] border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-300/60 focus:ring-4 focus:ring-amber-100"
                   placeholder="ID number"
                 />
@@ -227,6 +278,11 @@ export default function StudentPage() {
                 <textarea
                   value={studentAnswer}
                   onChange={(event) => setStudentAnswer(event.target.value)}
+                  onPaste={preventClipboardAction}
+                  onCopy={preventClipboardAction}
+                  onCut={preventClipboardAction}
+                  onContextMenu={preventContextMenu}
+                  onDrop={(event) => event.preventDefault()}
                   rows={6}
                   className="mt-2 w-full rounded-[1.5rem] border border-slate-300 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-900 outline-none transition focus:border-amber-300/60 focus:ring-4 focus:ring-amber-100"
                   placeholder="Type your reflection here. Minimum 50 characters."
@@ -248,7 +304,7 @@ export default function StudentPage() {
 
             <button
               type="submit"
-              disabled={loading || !hasPrompt || studentAnswer.trim().length < MIN_CHARS}
+              disabled={loading || !canSubmit}
               className="inline-flex h-12 items-center justify-center rounded-full bg-amber-300 px-6 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:opacity-70"
             >
               {loading ? "Submitting..." : "Submit reflection"}
