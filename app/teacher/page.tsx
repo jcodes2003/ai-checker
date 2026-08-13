@@ -369,11 +369,10 @@ export default function TeacherPage() {
 
                       <button
                         type="button"
-                        onClick={() =>
-                          setSelectedSubmissionId((currentId) =>
-                            currentId === submission.id ? null : submission.id
-                          )
-                        }
+                        onClick={() => {
+                          setSelectedSubmissionId(submission.id);
+                          setIsDetailModalOpen(true);
+                        }}
                         className="col-span-3 flex items-center text-left font-semibold text-slate-50 transition hover:text-amber-200"
                       >
                         <span>
@@ -418,128 +417,11 @@ export default function TeacherPage() {
               )}
             </div>
 
-            {selectedSubmissionId ? (
-              <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Selected student
-                    </div>
-                    <h3 className="mt-1 text-2xl font-semibold text-slate-950">
-                      {(selectedRecord ?? selectedSubmission)?.student_name}
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-600">
-                      ID number {(selectedRecord ?? selectedSubmission)?.student_id_number}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Section {(selectedRecord ?? selectedSubmission)?.student_section ?? "No section"}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-right">
-                      <div className="text-3xl font-semibold text-emerald-700">
-                        {(selectedRecord ?? selectedSubmission)?.score ?? "N/A"}
-                      </div>
-                      <div className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-600">
-                        {(selectedRecord ?? selectedSubmission)?.band ?? "No band"}
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setIsDetailModalOpen(true)}
-                      className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                    >
-                      Open full view
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (!selectedSubmissionId) return;
-                        const confirmRun = confirm("Run AI check for this submission?");
-                        if (!confirmRun) return;
-
-                        try {
-                          const runResp = await fetch("/api/ai-checker/run", {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({ id: selectedSubmissionId }),
-                          });
-                          if (!runResp.ok) {
-                            const err = await runResp.json();
-                            alert(err.error || "Failed to run AI.");
-                          } else {
-                            alert("AI check completed. Refreshing submissions.");
-                            await loadSubmissions(true);
-                          }
-                        } catch {
-                          alert("Failed to run AI check.");
-                        }
-                      }}
-                      className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                    >
-                      Run AI check
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-6 grid gap-5 xl:grid-cols-2">
-                  <div className="rounded-2xl bg-white p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Student answer
-                    </div>
-                    <p className="mt-2 max-h-[28rem] overflow-y-auto whitespace-pre-wrap text-sm leading-7 text-slate-700">
-                      {(selectedRecord ?? selectedSubmission)?.student_answer}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl bg-white p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      AI response
-                    </div>
-                    <div className="mt-2 max-h-[28rem] space-y-3 overflow-y-auto text-sm leading-7 text-slate-700">
-                      <p className="font-semibold text-slate-950">
-                        {(selectedRecord ?? selectedSubmission)?.evaluation.summary ?? "No summary available."}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-slate-950">
-                          Teacher feedback:
-                        </span>{" "}
-                        {(selectedRecord ?? selectedSubmission)?.evaluation.teacherFeedback ?? "Not available."}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-slate-950">
-                          Student feedback:
-                        </span>{" "}
-                        {(selectedRecord ?? selectedSubmission)?.evaluation.studentFeedback ?? "Not available."}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-slate-950">
-                          Related:
-                        </span>{" "}
-                        {(selectedRecord ?? selectedSubmission)?.evaluation.isRelatedToQuestion === false
-                          ? "Off topic"
-                          : "On topic"}
-                      </p>
-                      <p>
-                        <span className="font-semibold text-slate-950">
-                          Note:
-                        </span>{" "}
-                        {(selectedRecord ?? selectedSubmission)?.evaluation.relevanceNote ?? "No relevance note."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
+            {selectedSubmissionId && !isDetailModalOpen ? (
               <div className="mt-6 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-600">
                 Select a student name above to reveal the submitted reflection and AI feedback.
               </div>
-            )}
+            ) : null}
 
             {isDetailModalOpen && selectedSubmissionId ? (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
@@ -553,14 +435,46 @@ export default function TeacherPage() {
                         {(selectedRecord ?? selectedSubmission)?.student_name}
                       </h3>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsDetailModalOpen(false)}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-medium text-slate-700 transition hover:bg-slate-100"
-                      aria-label="Close full view"
-                    >
-                      ×
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsDetailModalOpen(false)}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-medium text-slate-700 transition hover:bg-slate-100"
+                        aria-label="Close full view"
+                      >
+                        ×
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!selectedSubmissionId) return;
+                          const confirmRun = confirm("Run AI check for this submission?");
+                          if (!confirmRun) return;
+
+                          try {
+                            const runResp = await fetch("/api/ai-checker/run", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ id: selectedSubmissionId }),
+                            });
+
+                            if (!runResp.ok) {
+                              const err = await runResp.json();
+                              alert(err.error || "Failed to run AI.");
+                            } else {
+                              alert("AI check completed. Refreshing submissions.");
+                              await loadSubmissions(true);
+                            }
+                          } catch {
+                            alert("Failed to run AI check.");
+                          }
+                        }}
+                        className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        Run AI check
+                      </button>
+                    </div>
                   </div>
 
                   <div className="grid max-h-[calc(90vh-80px)] gap-5 overflow-y-auto p-5 lg:grid-cols-2">
