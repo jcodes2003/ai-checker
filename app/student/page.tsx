@@ -93,12 +93,14 @@ export default function StudentPage() {
   const MIN_WORDS = 150;
   const wordCount = (value: string) =>
     value.trim().split(/\s+/).filter(Boolean).length;
+  const currentWordCount = wordCount(studentAnswer);
+  const hasMinimumWords = currentWordCount >= MIN_WORDS;
   const canSubmit =
     hasPrompt &&
     studentName.trim().length > 0 &&
     studentIdNumber.trim().length > 0 &&
     studentSection.trim().length > 0 &&
-    wordCount(studentAnswer) >= MIN_WORDS;
+    hasMinimumWords;
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -291,6 +293,22 @@ export default function StudentPage() {
                   placeholder="Type your reflection here. Minimum 150 words."
                 />
               </label>
+            </div>
+
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              {studentAnswer.trim() ? (
+                hasMinimumWords ? (
+                  <span>
+                    Word count: <strong>{currentWordCount}</strong> / {MIN_WORDS}. Requirement met.
+                  </span>
+                ) : (
+                  <span>
+                    Word count: <strong>{currentWordCount}</strong> / {MIN_WORDS}. You need at least <strong>{MIN_WORDS - currentWordCount}</strong> more words before submitting.
+                  </span>
+                )
+              ) : (
+                <span>Minimum required: {MIN_WORDS} words.</span>
+              )}
             </div>
 
             {error ? (
