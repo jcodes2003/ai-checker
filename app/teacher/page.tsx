@@ -305,7 +305,7 @@ export default function TeacherPage() {
                 </label>
                 <button
                   type="button"
-                  onClick={loadSubmissions}
+                  onClick={() => void loadSubmissions()}
                   className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 px-4 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
                 >
                   Refresh

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 
 type ApiResponse = {
   submitted: boolean;
@@ -28,13 +27,9 @@ const SECTION_OPTIONS = [
 ];
 
 export default function StudentPage() {
-  const searchParams = useSearchParams();
-  const queryQuestion = searchParams.get("question")?.trim() ?? "";
-  const queryRubric = searchParams.get("rubric")?.trim() ?? "";
-
   const [promptId, setPromptId] = useState<number | null>(null);
-  const [question, setQuestion] = useState(queryQuestion);
-  const [rubric, setRubric] = useState(queryRubric);
+  const [question, setQuestion] = useState("");
+  const [rubric, setRubric] = useState("");
   const [studentIdNumber, setStudentIdNumber] = useState("");
   const [studentSection, setStudentSection] = useState("");
   const [studentName, setStudentName] = useState("");
@@ -45,6 +40,22 @@ export default function StudentPage() {
   const [statusMessage, setStatusMessage] = useState("");
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const queryQuestion = params.get("question")?.trim() ?? "";
+    const queryRubric = params.get("rubric")?.trim() ?? "";
+
+    if (queryQuestion) {
+      setQuestion(queryQuestion);
+    }
+
+    if (queryRubric) {
+      setRubric(queryRubric);
+    }
+
     if (queryQuestion) {
       return;
     }
@@ -64,11 +75,11 @@ export default function StudentPage() {
       }
     }
 
-    loadPrompt();
-  }, [queryQuestion, queryRubric]);
+    void loadPrompt();
+  }, []);
 
   const hasPrompt = Boolean(question.trim());
-  const MIN_CHARS = 50; // Minimum characters required for a valid reflection
+  const MIN_CHARS = 50;
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -125,207 +136,125 @@ export default function StudentPage() {
           >
             Back home
           </Link>
-          <span className="rounded-full border border-slate-200/70 bg-white/95 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">
+          <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100">
             Student view
           </span>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
-          <div className="rounded-[2rem] border border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.16)]">
-            <div className="inline-flex items-center rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-amber-700">
-              Reflection prompt
+        <div className="rounded-[2rem] border border-slate-200/70 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.16)]">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-semibold text-slate-950">
+                Submit your reflection
+              </h1>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                Answer the question clearly, then submit for teacher review.
+              </p>
             </div>
-            <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-950">
-              Answer the question clearly.
-            </h1>
-            <p className="mt-4 text-sm leading-7 text-slate-600">
-              Use the rubric to shape your reflection and send it for teacher review.
-            </p>
-
-            <div className="mt-6 space-y-5">
-              <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Question
-                </div>
-                <p className="mt-3 text-base leading-8 text-slate-800">
-                  {question || "No question has been set yet."}
-                </p>
-              </div>
-
-              <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Rubric guidance
-                </div>
-                <p className="mt-3 text-sm leading-7 text-slate-700">
-                  {rubric || "No rubric has been shared yet."}
-                </p>
-              </div>
+            <div className="rounded-full bg-emerald-50 px-4 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">
+              {hasPrompt ? "Prompt loaded" : "Waiting for prompt..."}
             </div>
           </div>
 
-          <form
-            onSubmit={onSubmit}
-            className="rounded-[2rem] border border-slate-700/80 bg-slate-950/95 p-6 text-white shadow-[0_30px_120px_rgba(0,0,0,0.28)] backdrop-blur-xl"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-semibold text-white">Your answer</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-200/90">
-                  Write your reflection below, then submit it for teacher review.
-                </p>
-              </div>
-              <span className="rounded-full bg-slate-950/80 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white">
-                Step 1
-              </span>
+          <form className="mt-8 space-y-6" onSubmit={onSubmit}>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
+                Reflection question
+              </label>
+              <textarea
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                rows={4}
+                className="mt-2 w-full rounded-[1.5rem] border border-slate-300 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-900 outline-none transition focus:border-amber-300/60 focus:ring-4 focus:ring-amber-100"
+                placeholder="Your prompt will appear here once loaded."
+              />
             </div>
 
-            {!hasPrompt ? (
-              <div className="mt-5 rounded-2xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm leading-7 text-amber-950">
-                No prompt is loaded yet. Open the teacher-shared student page to
-                begin.
-              </div>
-            ) : null}
-
-            <label className="mt-6 block">
-              <span className="mb-2 block text-sm font-medium text-slate-200">
-                Section
-              </span>
-              <select
-                value={studentSection}
-                onChange={(event) => setStudentSection(event.target.value)}
-                className="w-full rounded-[1.5rem] border border-white/15 bg-slate-950/10 px-4 py-4 text-base leading-7 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-amber-300/60 focus:bg-white/20"
-              >
-                <option value="" disabled>
-                  Select your section
-                </option>
-                {SECTION_OPTIONS.map((section) => (
-                  <option key={section} value={section}>
-                    {section}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="mt-5 block">
-              <span className="mb-2 block text-sm font-medium text-slate-200">
-                Student ID number
-              </span>
-              <input
-                value={studentIdNumber}
-                onChange={(event) => setStudentIdNumber(event.target.value)}
-                className="w-full rounded-[1.5rem] border border-slate-700/70 bg-slate-950/90 px-4 py-4 text-base leading-7 text-white outline-none transition placeholder:text-slate-400 focus:border-amber-300/80 focus:bg-slate-900/90"
-                placeholder="Enter your ID number"
-              />
-            </label>
-
-            <label className="mt-5 block">
-              <span className="mb-2 block text-sm font-medium text-slate-200">
-                Student name
-              </span>
-              <input
-                value={studentName}
-                onChange={(event) => setStudentName(event.target.value)}
-                className="w-full rounded-[1.5rem] border border-slate-700/70 bg-slate-950/90 px-4 py-4 text-base leading-7 text-white outline-none transition placeholder:text-slate-400 focus:border-amber-300/80 focus:bg-slate-900/90"
-                placeholder="Enter your name"
-              />
-            </label>
-
-            <label className="mt-5 block">
-              <span className="mb-2 block text-sm font-medium text-slate-200">
-                Reflection response
-              </span>
+            <div>
+              <label className="block text-sm font-medium text-slate-700">
+                Rubric or guidance
+              </label>
               <textarea
-                value={studentAnswer}
-                onChange={(event) => setStudentAnswer(event.target.value)}
-                rows={12}
-                onCopy={(event) => event.preventDefault()}
-                onPaste={(event) => event.preventDefault()}
-                onCut={(event) => event.preventDefault()}
-                onDrop={(event) => event.preventDefault()}
-                aria-describedby="reflection-help reflection-count"
-                className="w-full rounded-[1.5rem] border border-slate-700/70 bg-slate-950/90 px-4 py-4 text-base leading-7 text-white outline-none transition placeholder:text-slate-400 focus:border-amber-300/80 focus:bg-slate-900/90"
-                placeholder="Type your reflection here"
+                value={rubric}
+                onChange={(event) => setRubric(event.target.value)}
+                rows={4}
+                className="mt-2 w-full rounded-[1.5rem] border border-slate-300 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-900 outline-none transition focus:border-amber-300/60 focus:ring-4 focus:ring-amber-100"
+                placeholder="Optional rubric or expectations."
               />
+            </div>
 
-              <div className="mt-2 flex items-center justify-between">
-                <p id="reflection-help" className="text-xs text-slate-400">
-                  Copy, paste, cut, and drag-drop are disabled. Please type your reflection manually.
-                </p>
-                <p id="reflection-count" className={`text-xs ${studentAnswer.length >= MIN_CHARS ? 'text-emerald-700' : 'text-amber-500'}`}>
-                  {studentAnswer.length} chars • {studentAnswer.trim() ? studentAnswer.trim().split(/\s+/).filter(Boolean).length : 0} words
-                </p>
-              </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Student name
+                <input
+                  value={studentName}
+                  onChange={(event) => setStudentName(event.target.value)}
+                  className="mt-2 w-full rounded-[1.5rem] border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-300/60 focus:ring-4 focus:ring-amber-100"
+                  placeholder="Student name"
+                />
+              </label>
 
-              {studentAnswer.length > 0 && studentAnswer.length < MIN_CHARS ? (
-                <div className="mt-2 text-xs text-amber-600">
-                  Your reflection is short. Add {MIN_CHARS - studentAnswer.length} more characters to meet the minimum.
-                </div>
-              ) : null}
-            </label>
+              <label className="block text-sm font-medium text-slate-700">
+                Student ID number
+                <input
+                  value={studentIdNumber}
+                  onChange={(event) => setStudentIdNumber(event.target.value)}
+                  className="mt-2 w-full rounded-[1.5rem] border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-300/60 focus:ring-4 focus:ring-amber-100"
+                  placeholder="ID number"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Section
+                <select
+                  value={studentSection}
+                  onChange={(event) => setStudentSection(event.target.value)}
+                  className="mt-2 w-full rounded-[1.5rem] border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-amber-300/60 focus:ring-4 focus:ring-amber-100"
+                >
+                  <option value="">Choose a section</option>
+                  {SECTION_OPTIONS.map((section) => (
+                    <option key={section} value={section}>
+                      {section}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-sm font-medium text-slate-700">
+                Reflection answer
+                <textarea
+                  value={studentAnswer}
+                  onChange={(event) => setStudentAnswer(event.target.value)}
+                  rows={6}
+                  className="mt-2 w-full rounded-[1.5rem] border border-slate-300 bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-900 outline-none transition focus:border-amber-300/60 focus:ring-4 focus:ring-amber-100"
+                  placeholder="Type your reflection here. Minimum 50 characters."
+                />
+              </label>
+            </div>
 
             {error ? (
-              <div className="mt-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              <div className="rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
                 {error}
               </div>
             ) : null}
 
             {submitted ? (
-              <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-                {statusMessage || "Your reflection has been submitted for review."}
+              <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {statusMessage}
               </div>
             ) : null}
 
             <button
               type="submit"
-              disabled={
-                loading ||
-                !studentSection.trim() ||
-                !studentIdNumber.trim() ||
-                !studentName.trim() ||
-                studentAnswer.length < MIN_CHARS
-              }
-              className="mt-6 inline-flex h-14 w-full items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={loading || !hasPrompt || studentAnswer.trim().length < MIN_CHARS}
+              className="inline-flex h-12 items-center justify-center rounded-full bg-amber-300 px-6 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:opacity-70"
             >
-              {loading ? "Submitting reflection..." : "Submit reflection"}
+              {loading ? "Submitting..." : "Submit reflection"}
             </button>
           </form>
         </div>
-
-        <section className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
-          <div className="rounded-[2rem] border border-slate-200/70 bg-white/95 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.12)]">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-slate-500">
-                  Submission status
-                </p>
-                <h2 className="mt-1 text-2xl font-semibold text-slate-950">
-                  Teacher review only
-                </h2>
-              </div>
-              <div className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
-                {submitted ? "Submitted" : "Not submitted"}
-              </div>
-            </div>
-
-            <p className="mt-5 text-sm leading-7 text-slate-600">
-              {submitted
-                ? "Your reflection has been sent to the teacher. AI feedback is not displayed to the student." 
-                : "When you submit, your teacher receives the graded review privately."}
-            </p>
-          </div>
-
-          <div className="rounded-[2rem] border border-slate-200/70 bg-white/95 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.12)]">
-            <h3 className="text-lg font-semibold text-slate-950">
-              Privacy note
-            </h3>
-            <p className="mt-3 text-sm leading-7 text-slate-600">
-              AI analysis and teacher feedback are stored securely for teacher review only.
-            </p>
-            <div className="mt-5 rounded-2xl bg-slate-50 p-4 text-sm leading-7 text-slate-700">
-              Your reflection will be submitted and evaluated, but only the teacher sees the details.
-            </div>
-          </div>
-        </section>
       </section>
     </main>
   );
