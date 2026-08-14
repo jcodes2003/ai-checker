@@ -70,6 +70,32 @@ const responseSchema = {
   ],
 } as const;
 
+function buildFallbackEvaluation() {
+  return {
+    score: 5,
+    band: "Developing",
+    summary:
+      "Your reflection was submitted successfully, but the AI grading service was unavailable at the moment of submission.",
+    strengths: [
+      "The reflection was captured and saved for teacher review.",
+      "The response is ready for manual evaluation.",
+    ],
+    missingPoints: [
+      "The AI checker was unable to complete the reflection review at this time.",
+      "A teacher can review the reflection and provide feedback manually.",
+    ],
+    teacherFeedback:
+      "AI review was temporarily unavailable. Please review this submission manually and leave feedback as needed.",
+    studentFeedback:
+      "Your reflection has been submitted successfully. The AI checker was temporarily unavailable, so a teacher may review it manually.",
+    nextStep:
+      "Continue with your assignment while your teacher reviews the reflection or try again later for AI feedback.",
+    isRelatedToQuestion: true,
+    relevanceNote:
+      "The reflection was received successfully. AI relevance checking could not be completed because the external grading service was unavailable.",
+  };
+}
+
 export async function POST(request: Request) {
   const apiKey = process.env.OPENROUTER_API_KEY ?? process.env.OPENAI_API_KEY;
 
@@ -186,106 +212,122 @@ export async function POST(request: Request) {
     `Student answer:\n${studentAnswer}`,
   ].join("\n\n");
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "X-OpenRouter-Metadata": "enabled",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [{ role: "user", content: `${instruction}\n\n${prompt}` }],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "reflection_grading_result",
-          strict: true,
-          schema: responseSchema,
+  let result:
+    | {
+        score?: number;
+        band?: string;
+        summary?: string;
+        strengths?: string[];
+        missingPoints?: string[];
+        teacherFeedback?: string;
+        studentFeedback?: string;
+        nextStep?: string;
+        isRelatedToQuestion?: boolean;
+        relevanceNote?: string;
+      }
+    | undefined;
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "X-OpenRouter-Metadata": "enabled",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [{ role: "user", content: `${instruction}\n\n${prompt}` }],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "reflection_grading_result",
+            strict: true,
+            schema: responseSchema,
+          },
         },
-      },
-      max_tokens: 1200,
-    }),
-  });
+        max_tokens: 1200,
+      }),
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    return Response.json(
-      {
-        error: `OpenRouter request failed with status ${response.status}. ${errorText}`,
-      },
-      { status: 502 }
-    );
-  }
-
-  const data = (await response.json()) as {
-    choices?: Array<{
-      message?: {
-        content?: string | null;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.warn(
+        `OpenRouter grading failed for student ${studentIdNumber}: ${response.status} ${errorText}`
+      );
+      result = buildFallbackEvaluation();
+    } else {
+      const data = (await response.json()) as {
+        choices?: Array<{
+          message?: {
+            content?: string | null;
+          };
+        }>;
       };
-    }>;
-  };
 
-  const rawText = data.choices?.[0]?.message?.content ?? "";
+      const rawText = data.choices?.[0]?.message?.content ?? "";
 
-  if (!rawText) {
-    return Response.json(
-      { error: "The model did not return grading text." },
-      { status: 502 }
-    );
-  }
-
-  function extractJsonObject(text: string) {
-    const trimmed = text.trim();
-    try {
-      return JSON.parse(trimmed);
-    } catch {
-      let depth = 0;
-      let start = -1;
-      for (let i = 0; i < trimmed.length; i++) {
-        if (trimmed[i] === "{") {
-          if (depth === 0) {
-            start = i;
-          }
-          depth += 1;
-        } else if (trimmed[i] === "}") {
-          depth -= 1;
-          if (depth === 0 && start !== -1) {
-            const candidate = trimmed.slice(start, i + 1);
-            try {
-              return JSON.parse(candidate);
-            } catch {
-              // continue searching for another object
+      if (!rawText) {
+        console.warn(
+          `OpenRouter returned no grading content for student ${studentIdNumber}.`
+        );
+        result = buildFallbackEvaluation();
+      } else {
+        function extractJsonObject(text: string) {
+          const trimmed = text.trim();
+          try {
+            return JSON.parse(trimmed);
+          } catch {
+            let depth = 0;
+            let start = -1;
+            for (let i = 0; i < trimmed.length; i++) {
+              if (trimmed[i] === "{") {
+                if (depth === 0) {
+                  start = i;
+                }
+                depth += 1;
+              } else if (trimmed[i] === "}") {
+                depth -= 1;
+                if (depth === 0 && start !== -1) {
+                  const candidate = trimmed.slice(start, i + 1);
+                  try {
+                    return JSON.parse(candidate);
+                  } catch {
+                    // continue searching for another object
+                  }
+                }
+              }
             }
           }
+          return null;
+        }
+
+        const parsedResult = extractJsonObject(rawText) as {
+          score?: number;
+          band?: string;
+          summary?: string;
+          strengths?: string[];
+          missingPoints?: string[];
+          teacherFeedback?: string;
+          studentFeedback?: string;
+          nextStep?: string;
+          isRelatedToQuestion?: boolean;
+          relevanceNote?: string;
+        } | null;
+
+        if (!parsedResult) {
+          console.warn(
+            `OpenRouter returned invalid JSON for student ${studentIdNumber}.`
+          );
+          result = buildFallbackEvaluation();
+        } else {
+          result = parsedResult;
         }
       }
     }
-    return null;
-  }
-
-  try {
-    const result = extractJsonObject(rawText) as {
-      score?: number;
-      band?: string;
-      summary?: string;
-      strengths?: string[];
-      missingPoints?: string[];
-      teacherFeedback?: string;
-      studentFeedback?: string;
-      nextStep?: string;
-      isRelatedToQuestion?: boolean;
-      relevanceNote?: string;
-    } | null;
-
-    if (!result) {
-      return Response.json(
-        { error: "The model returned invalid JSON." },
-        { status: 502 }
-      );
-    }
 
     if (supabaseUrl && supabaseKey) {
+      const normalizedResult = result ?? buildFallbackEvaluation();
       const submissionPayload = {
         prompt_id: body.promptId ?? null,
         student_id_number: studentIdNumber,
@@ -294,12 +336,12 @@ export async function POST(request: Request) {
         question,
         rubric,
         student_answer: studentAnswer,
-        evaluation: result,
+        evaluation: normalizedResult,
         score:
-          typeof result.score === "number"
-            ? Math.max(1, Math.min(10, Math.round(result.score)))
+          typeof normalizedResult.score === "number"
+            ? Math.max(1, Math.min(10, Math.round(normalizedResult.score)))
             : null,
-        band: typeof result.band === "string" ? result.band : null,
+        band: typeof normalizedResult.band === "string" ? normalizedResult.band : null,
       };
 
       const insertResponse = await fetch(
@@ -341,12 +383,15 @@ export async function POST(request: Request) {
                 question,
                 rubric,
                 student_answer: studentAnswer,
-                evaluation: result,
+                evaluation: normalizedResult,
                 score:
-                  typeof result.score === "number"
-                    ? Math.max(1, Math.min(10, Math.round(result.score)))
+                  typeof normalizedResult.score === "number"
+                    ? Math.max(1, Math.min(10, Math.round(normalizedResult.score)))
                     : null,
-                band: typeof result.band === "string" ? result.band : null,
+                band:
+                  typeof normalizedResult.band === "string"
+                    ? normalizedResult.band
+                    : null,
               }),
             }
           );
@@ -354,8 +399,9 @@ export async function POST(request: Request) {
           if (fallbackInsertResponse.ok) {
             return Response.json({
               submitted: true,
-              message: "Your reflection has been submitted for review.",
-              result,
+              message:
+                "Your reflection has been submitted successfully. AI review is temporarily unavailable, so a teacher may review it manually.",
+              result: normalizedResult,
             });
           }
         }
@@ -371,13 +417,53 @@ export async function POST(request: Request) {
 
     return Response.json({
       submitted: true,
-      message: "Your reflection has been submitted for review.",
-      result,
+      message:
+        "Your reflection has been submitted successfully. AI review is temporarily unavailable, so a teacher may review it manually.",
+      result: result ?? buildFallbackEvaluation(),
     });
-  } catch {
+  } catch (error) {
+    console.error("Failed to process reflection submission:", error);
+
+    if (supabaseUrl && supabaseKey) {
+      try {
+        await fetch(`${supabaseUrl}/rest/v1/reflection_submissions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${supabaseKey}`,
+            apikey: `${supabaseKey}`,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({
+            prompt_id: body.promptId ?? null,
+            student_id_number: studentIdNumber,
+            student_section: studentSection,
+            student_name: studentName,
+            question,
+            rubric,
+            student_answer: studentAnswer,
+            evaluation: buildFallbackEvaluation(),
+            score: 5,
+            band: "Developing",
+          }),
+        });
+
+        return Response.json({
+          submitted: true,
+          message:
+            "Your reflection has been submitted successfully. AI review is temporarily unavailable, so a teacher may review it manually.",
+          result: buildFallbackEvaluation(),
+        });
+      } catch {
+        // fall through to explicit error below
+      }
+    }
+
     return Response.json(
-      { error: "The model returned invalid JSON." },
-      { status: 502 }
+      {
+        error: "Submission could not be processed. Please try again later.",
+      },
+      { status: 500 }
     );
   }
 }

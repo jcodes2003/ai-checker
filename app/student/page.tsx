@@ -27,9 +27,18 @@ const SECTION_OPTIONS = [
 ];
 
 export default function StudentPage() {
+  const getInitialQueryValue = (key: "question" | "rubric") => {
+    if (typeof window === "undefined") {
+      return "";
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    return params.get(key)?.trim() ?? "";
+  };
+
   const [promptId, setPromptId] = useState<number | null>(null);
-  const [question, setQuestion] = useState("");
-  const [rubric, setRubric] = useState("");
+  const [question, setQuestion] = useState(() => getInitialQueryValue("question"));
+  const [rubric, setRubric] = useState(() => getInitialQueryValue("rubric"));
   const [studentIdNumber, setStudentIdNumber] = useState("");
   const [studentSection, setStudentSection] = useState("");
   const [studentName, setStudentName] = useState("");
@@ -52,34 +61,23 @@ export default function StudentPage() {
   }
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const params = new URLSearchParams(window.location.search);
-    const queryQuestion = params.get("question")?.trim() ?? "";
-    const queryRubric = params.get("rubric")?.trim() ?? "";
-    const hasQueryPrompt = Boolean(queryQuestion || queryRubric);
-
-    if (queryQuestion) {
-      setQuestion(queryQuestion);
-    }
-
-    if (queryRubric) {
-      setRubric(queryRubric);
-    }
-
     async function loadPrompt() {
+      const hasQueryPrompt = Boolean(
+        getInitialQueryValue("question") || getInitialQueryValue("rubric")
+      );
+
+      if (hasQueryPrompt) {
+        return;
+      }
+
       try {
         const response = await fetch("/api/prompts");
         const data = (await response.json()) as PromptResponse;
 
         if (data.prompt) {
           setPromptId(data.prompt.id);
-          if (!hasQueryPrompt) {
-            setQuestion(data.prompt.question);
-            setRubric(data.prompt.rubric ?? "");
-          }
+          setQuestion(data.prompt.question);
+          setRubric(data.prompt.rubric ?? "");
         }
       } catch {
         // If the prompt fetch fails, the teacher can still use the query-string fallback.

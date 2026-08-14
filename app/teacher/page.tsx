@@ -284,6 +284,12 @@ export default function TeacherPage() {
                 Open student view
               </Link>
             </div>
+
+            {publishStatus ? (
+              <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {publishStatus}
+              </div>
+            ) : null}
           </div>
 
           <div className="w-full min-h-[32rem] rounded-[2rem] border border-slate-700/60 bg-slate-950/95 p-6 text-slate-50 shadow-[0_30px_120px_rgba(0,0,0,0.24)] sm:p-8">

@@ -1,5 +1,46 @@
 const MODEL = process.env.OPENROUTER_MODEL ?? "openrouter/free";
 
+type SubmissionRow = {
+  id: number;
+  prompt_id: number | null;
+  student_id_number: string;
+  student_section: string | null;
+  student_name: string;
+  question: string;
+  rubric: string | null;
+  student_answer: string;
+  evaluation: Record<string, unknown>;
+  score: number | null;
+  band: string | null;
+  created_at: string;
+};
+
+function buildFallbackEvaluation() {
+  return {
+    score: 5,
+    band: "Developing",
+    summary:
+      "The reflection was submitted successfully, but the AI review service was unavailable at the moment of evaluation.",
+    strengths: [
+      "The student response was captured and saved for teacher review.",
+      "The reflection is ready for manual follow-up.",
+    ],
+    missingPoints: [
+      "The AI checker could not complete its review right now.",
+      "A teacher should review the reflection manually.",
+    ],
+    teacherFeedback:
+      "AI review was temporarily unavailable. Please review this reflection manually and share feedback as needed.",
+    studentFeedback:
+      "Your reflection was submitted successfully. The AI reviewer was unavailable, so a teacher may review it manually.",
+    nextStep:
+      "Continue working while your teacher reviews the reflection or try again later for AI feedback.",
+    isRelatedToQuestion: true,
+    relevanceNote:
+      "AI relevance checking could not be completed because the external grading service was unavailable.",
+  };
+}
+
 export async function POST(request: Request) {
   const apiKey = process.env.OPENROUTER_API_KEY ?? process.env.OPENAI_API_KEY;
 
@@ -36,7 +77,7 @@ export async function POST(request: Request) {
     return Response.json({ error: `Failed to fetch submission: ${t}` }, { status: 500 });
   }
 
-  const rows = (await readResp.json()) as any[];
+  const rows = (await readResp.json()) as SubmissionRow[];
   const row = rows[0];
 
   if (!row) {
@@ -65,90 +106,102 @@ export async function POST(request: Request) {
     `Student answer:\n${row.student_answer}`,
   ].join("\n\n");
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "X-OpenRouter-Metadata": "enabled",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages: [{ role: "user", content: `${instruction}\n\n${prompt}` }],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "reflection_grading_result",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              score: { type: "number", minimum: 1, maximum: 10 },
-              band: { type: "string", enum: ["Excellent", "Strong", "Developing", "Needs work"] },
-              summary: { type: "string" },
-              strengths: { type: "array", items: { type: "string" }, minItems: 2 },
-              missingPoints: { type: "array", items: { type: "string" }, minItems: 2 },
-              teacherFeedback: { type: "string" },
-              studentFeedback: { type: "string" },
-              nextStep: { type: "string" },
-              isRelatedToQuestion: { type: "boolean" },
-              relevanceNote: { type: "string" },
+  const fallbackResult = buildFallbackEvaluation();
+  let result: Record<string, unknown> = fallbackResult;
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "X-OpenRouter-Metadata": "enabled",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [{ role: "user", content: `${instruction}\n\n${prompt}` }],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "reflection_grading_result",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                score: { type: "number", minimum: 1, maximum: 10 },
+                band: { type: "string", enum: ["Excellent", "Strong", "Developing", "Needs work"] },
+                summary: { type: "string" },
+                strengths: { type: "array", items: { type: "string" }, minItems: 2 },
+                missingPoints: { type: "array", items: { type: "string" }, minItems: 2 },
+                teacherFeedback: { type: "string" },
+                studentFeedback: { type: "string" },
+                nextStep: { type: "string" },
+                isRelatedToQuestion: { type: "boolean" },
+                relevanceNote: { type: "string" },
+              },
+              required: [
+                "score",
+                "band",
+                "summary",
+                "strengths",
+                "missingPoints",
+                "teacherFeedback",
+                "studentFeedback",
+                "nextStep",
+                "isRelatedToQuestion",
+                "relevanceNote",
+              ],
             },
-            required: [
-              "score",
-              "band",
-              "summary",
-              "strengths",
-              "missingPoints",
-              "teacherFeedback",
-              "studentFeedback",
-              "nextStep",
-              "isRelatedToQuestion",
-              "relevanceNote",
-            ],
           },
         },
-      },
-      max_tokens: 1200,
-    }),
-  });
+        max_tokens: 1200,
+      }),
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    return Response.json({ error: `OpenRouter request failed with status ${response.status}. ${errorText}` }, { status: 502 });
-  }
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.warn(`OpenRouter request failed for submission ${body.id}: ${response.status}. ${errorText}`);
+    } else {
+      const data = (await response.json()) as {
+        choices?: Array<{
+          message?: {
+            content?: string | null;
+          };
+        }>;
+      };
+      const rawText = data.choices?.[0]?.message?.content ?? "";
 
-  const data = (await response.json()) as any;
-  const rawText = data.choices?.[0]?.message?.content ?? "";
+      function extractJsonObject(text: string) {
+        const trimmed = text.trim();
+        try { return JSON.parse(trimmed); } catch {
+          let depth = 0; let start = -1;
+          for (let i = 0; i < trimmed.length; i++) {
+            if (trimmed[i] === '{') { if (depth === 0) start = i; depth += 1; }
+            else if (trimmed[i] === '}') { depth -= 1; if (depth === 0 && start !== -1) { const candidate = trimmed.slice(start, i+1); try { return JSON.parse(candidate); } catch {} } }
+          }
+        }
+        return null;
+      }
 
-  function extractJsonObject(text: string) {
-    const trimmed = text.trim();
-    try { return JSON.parse(trimmed); } catch {
-      let depth = 0; let start = -1;
-      for (let i = 0; i < trimmed.length; i++) {
-        if (trimmed[i] === '{') { if (depth === 0) start = i; depth += 1; }
-        else if (trimmed[i] === '}') { depth -= 1; if (depth === 0 && start !== -1) { const candidate = trimmed.slice(start, i+1); try { return JSON.parse(candidate); } catch {} } }
+      const parsedResult = extractJsonObject(rawText);
+      if (parsedResult && typeof parsedResult === "object") {
+        result = parsedResult as Record<string, unknown>;
       }
     }
-    return null;
-  }
-
-  const result = extractJsonObject(rawText);
-
-  if (!result) {
-    return Response.json({ error: "The model returned invalid JSON." }, { status: 502 });
+  } catch (error) {
+    console.warn(`OpenRouter grading failed for submission ${body.id}:`, error);
   }
 
   const updatePayload = {
     evaluation: result,
-    score: typeof result.score === 'number' ? Math.max(1, Math.min(10, Math.round(result.score))) : null,
-    band: typeof result.band === 'string' ? result.band : null,
+    score: typeof result.score === "number" ? Math.max(1, Math.min(10, Math.round(Number(result.score)))) : null,
+    band: typeof result.band === "string" ? result.band : null,
   };
 
   const updateResp = await fetch(`${supabaseUrl}/rest/v1/reflection_submissions?id=eq.${body.id}`, {
-    method: 'PATCH',
-    headers: { Authorization: `Bearer ${supabaseKey}`, apikey: supabaseKey, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${supabaseKey}`, apikey: supabaseKey, "Content-Type": "application/json", Prefer: "return=minimal" },
     body: JSON.stringify(updatePayload),
   });
 
@@ -157,5 +210,5 @@ export async function POST(request: Request) {
     return Response.json({ error: `Failed to update submission: ${t}` }, { status: 500 });
   }
 
-  return Response.json({ updated: true, result });
+  return Response.json({ updated: true, result, aiUnavailable: result === fallbackResult });
 }
